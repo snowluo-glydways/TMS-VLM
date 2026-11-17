@@ -1,0 +1,13 @@
+{
+  "method": "baseline",
+  "frames": 194,
+  "stride": 15,
+  "concurrency": 1,
+  "max_side": 1920,
+  "wall_s": 889.4,
+  "latency_mean_s": 4.551,
+  "latency_p50_s": 4.64,
+  "completion_tokens_mean": 306.8,
+  "decode_tok_per_s_mean": 67.5,
+  "pedestrians_mean": 6.74
+}

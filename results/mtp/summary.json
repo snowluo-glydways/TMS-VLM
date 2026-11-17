@@ -1,0 +1,13 @@
+{
+  "method": "mtp",
+  "frames": 194,
+  "stride": 15,
+  "concurrency": 1,
+  "max_side": 1920,
+  "wall_s": 343.5,
+  "latency_mean_s": 1.738,
+  "latency_p50_s": 1.771,
+  "completion_tokens_mean": 306.2,
+  "decode_tok_per_s_mean": 176.1,
+  "pedestrians_mean": 6.72
+}

@@ -1,0 +1,13 @@
+{
+  "method": "jev",
+  "frames": 194,
+  "stride": 15,
+  "concurrency": 1,
+  "max_side": 1920,
+  "wall_s": 261.4,
+  "latency_mean_s": 1.314,
+  "latency_p50_s": 1.321,
+  "completion_tokens_mean": 134.7,
+  "decode_tok_per_s_mean": 158.9,
+  "pedestrians_mean": 6.73
+}

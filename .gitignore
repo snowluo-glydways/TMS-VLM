@@ -1,0 +1,14 @@
+# environments and model weights (re-downloadable, see README)
+.venv/
+models/
+__pycache__/
+*.pyc
+# internal camera data and anything rendered from it (not public)
+data/
+results/vis/
+*.mp4
+.token.json
+token.json
+# public dataset copies and renders (re-downloadable, large)
+v2x_pubilc_test/data/
+v2x_pubilc_test/vis/
