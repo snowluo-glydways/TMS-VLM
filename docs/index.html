@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TMS-VLM Pedestrian Demo</title>
+<meta name="description" content="Qwen3.8-27B pedestrian detection on a TMS roadside camera: baseline vs MTP vs JEV, 20 demo frames and latency.">
+<style>
+:root{
+  --page:#f9f9f7; --surface:#fcfcfb; --raised:#ffffff;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#6f6d68;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --chip:#efeee9; --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0d; --surface:#1a1a19; --raised:#222220;
+    --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --chip:#2a2a28; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0d; --surface:#1a1a19; --raised:#222220;
+  --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --chip:#2a2a28; --accent:#3987e5;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:18px;margin:0 0 4px}
+.sub{color:var(--ink-2);margin:0;max-width:820px}
+.meta{color:var(--muted);font-size:13px;margin-top:8px}
+section{margin-top:40px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+.kpi .lab{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px}
+.kpi .val{font-size:34px;font-weight:600;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .val small{font-size:15px;font-weight:500;color:var(--ink-2);margin-left:2px}
+.kpi .note{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sec-head p{margin:0;color:var(--ink-2);font-size:14px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.charts{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.chart-title{font-size:14px;font-weight:600;margin:0}
+.chart-sub{font-size:13px;color:var(--muted);margin:0 0 8px}
+svg text{fill:var(--muted);font-size:11px;font-family:inherit}
+svg .dl{fill:var(--ink-2);font-size:12px;font-weight:500}
+.tip{position:fixed;pointer-events:none;background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);display:none;z-index:20;min-width:150px;font-variant-numeric:tabular-nums}
+.tip .h{font-weight:600;color:var(--ink);margin-bottom:4px}
+.tip .r{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+.tip .r b{margin-left:auto;color:var(--ink);font-weight:600;padding-left:12px}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--grid)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:500}
+.tbl-wrap{overflow-x:auto;margin-top:12px}
+/* viewer */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.seg{display:inline-flex;background:var(--chip);border-radius:8px;padding:3px}
+.seg button{border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13px;padding:6px 12px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.seg button:focus-visible,.thumb:focus-visible,.nav:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav{border:1px solid var(--border);background:var(--raised);color:var(--ink);border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:16px}
+.counter{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;min-width:56px;text-align:center}
+.hint{margin-left:auto;color:var(--muted);font-size:12px}
+.stage{display:grid;grid-template-columns:1fr 280px;gap:12px}
+.imgbox{background:#000;border-radius:10px;overflow:hidden;position:relative;aspect-ratio:16/9}
+.imgbox img{width:100%;height:100%;object-fit:contain;display:block}
+.imgbox .cap{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;display:flex;align-items:center;gap:6px}
+.compare{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.compare .imgbox{cursor:zoom-in}
+.side h3{font-size:15px;margin:0}
+.side .t{color:var(--muted);font-size:13px;margin:2px 0 10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tag{background:var(--chip);color:var(--ink-2);font-size:12px;padding:2px 8px;border-radius:999px}
+.mrow{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--grid);font-size:13px}
+.mrow .nm{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)}
+.mrow .lat{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.mrow .st{grid-column:1/-1;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{grid-column:1/-1;height:6px;background:var(--chip);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px}
+.full{font-size:12px;color:var(--accent);text-decoration:none}
+.thumbs{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-top:12px}
+.thumb{position:relative;padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;cursor:pointer;background:#000;aspect-ratio:16/9}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:.8}
+.thumb[aria-current="true"]{border-color:var(--accent)}
+.thumb[aria-current="true"] img,.thumb:hover img{opacity:1}
+.thumb span{position:absolute;right:3px;bottom:2px;font-size:10px;color:#fff;background:rgba(0,0,0,.6);padding:0 4px;border-radius:4px;font-variant-numeric:tabular-nums}
+.thumb .dot{position:absolute;left:4px;top:4px;width:7px;height:7px;border-radius:50%;background:#fab219;box-shadow:0 0 0 1.5px #000}
+.foot{color:var(--muted);font-size:13px;margin-top:40px;line-height:1.6}
+.foot code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;z-index:30;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+.lightbox img{max-width:100%;max-height:100%}
+@media (max-width:900px){
+  .charts,.stage{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr}
+  .compare{grid-template-columns:1fr}
+  .thumbs{grid-template-columns:repeat(5,1fr)}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Pedestrian detection with Qwen3.8-27B: baseline vs MTP vs JEV</h1>
+    <p class="sub">Roadside TMS camera (3840×2160), 194 frames sampled at 1 fps over a 193 s log. Same model, three ways of serving and prompting it. All latencies are single-request, end to end, on 4× A100-80GB (vLLM, tensor parallel 4).</p>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <div class="sec-head">
+      <div>
+        <h2>Latency</h2>
+        <p>Per-frame latency for all 194 frames. Ticks on the bottom mark the 20 demo frames; click one to open it.</p>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="charts">
+      <div class="card">
+        <p class="chart-title">Latency per frame</p>
+        <p class="chart-sub">seconds, lower is better</p>
+        <div id="timeline"></div>
+      </div>
+      <div class="card">
+        <p class="chart-title">Where the time goes</p>
+        <p class="chart-sub">mean seconds per frame</p>
+        <div id="breakdown"></div>
+      </div>
+    </div>
+    <div class="card tbl-wrap"><table id="tbl"></table></div>
+  </section>
+
+  <section id="demo">
+    <div class="sec-head">
+      <div>
+        <h2>20 demo frames</h2>
+        <p>Chosen to cover the scene: every frame where the methods disagree on the count, the sparsest and most crowded moments, people close to and far from the camera, and the lowest-confidence JEV frame.</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="View" id="modeSeg">
+        <button data-mode="single" aria-pressed="true">Single</button>
+        <button data-mode="compare" aria-pressed="false">Side by side</button>
+      </div>
+      <div class="seg" role="group" aria-label="Method" id="methodSeg"></div>
+      <button class="nav" id="prev" aria-label="Previous frame">‹</button>
+      <span class="counter" id="counter"></span>
+      <button class="nav" id="next" aria-label="Next frame">›</button>
+      <span class="hint">← → frames · 1 2 3 methods · C compare</span>
+    </div>
+    <div class="stage">
+      <div id="view"></div>
+      <aside class="card side" id="side"></aside>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+  </section>
+
+  <div class="foot">
+    <b>Methods.</b> <b>Baseline</b>: plain vLLM, the model writes JSON <code>{"bbox_2d","label","confidence"}</code> per pedestrian (~300 tokens). <b>MTP</b>: same prompt, multi-token-prediction speculative decoding (3 draft tokens), so the output is the same but decodes ~2.6× faster. <b>JEV</b> (+MTP): the model writes only box coordinates (~135 tokens); each box is then checked with a 1-token “is this a pedestrian? Yes/No” question that reuses the cached image prefix and runs in parallel; the score is P(Yes). Box coordinates use Qwen's 0–1000 scale; greedy decoding, thinking off, frames resized to 1920 px wide.<br>
+    Frames marked with a yellow dot are ones where the three methods report different pedestrian counts. Click a big image to see it full size.
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+<div class="lightbox" id="lb"><img alt=""></div>
+
+<script>
+const NAMES={baseline:"Baseline",mtp:"MTP",jev:"JEV + MTP"};
+const COL={baseline:"var(--s1)",mtp:"var(--s2)",jev:"var(--s3)"};
+const $=s=>document.querySelector(s);
+const fmt=(x,d=2)=>Number(x).toFixed(d);
+const pad=f=>String(f).padStart(6,"0");
+const tip=$("#tip");
+function showTip(e,html){tip.innerHTML=html;tip.style.display="block";
+  const w=tip.offsetWidth,h=tip.offsetHeight;let x=e.clientX+14,y=e.clientY+14;
+  if(x+w>innerWidth-8)x=e.clientX-w-14; if(y+h>innerHeight-8)y=e.clientY-h-14;
+  tip.style.left=x+"px";tip.style.top=y+"px";}
+const hideTip=()=>tip.style.display="none";
+const sw=m=>`<i class="sw" style="background:${COL[m]}"></i>`;
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent&&parent.appendChild(e);return e;}
+
+fetch("data.json").then(r=>r.json()).then(D=>{
+  const M=D.methods,S=D.summary,T=D.timeline,DEMO=D.demo;
+  const base=S.baseline.latency_mean_s;
+  $("#meta").textContent=`${S.baseline.frames} frames · concurrency ${S.baseline.concurrency} · stride ${S.baseline.stride} (1 fps) · images sent at ${S.baseline.max_side} px`;
+
+  // KPI tiles
+  $("#kpis").innerHTML=M.map(m=>{const s=S[m];const sp=base/s.latency_mean_s;
+    return `<div class="card kpi"><div class="lab">${sw(m)}${NAMES[m]}</div>
+    <div class="val">${fmt(s.latency_mean_s)}<small>s / frame</small></div>
+    <div class="note">${m==="baseline"?"reference":`${fmt(sp,1)}× faster than baseline`} · p90 ${fmt(s.latency_p90_s)} s · ${fmt(s.pedestrians_mean)} peds/frame</div></div>`}).join("");
+  $("#legend").innerHTML=M.map(m=>`<span>${sw(m)}${NAMES[m]}</span>`).join("");
+
+  // table
+  $("#tbl").innerHTML=`<thead><tr><th>method</th><th>mean (s)</th><th>p50 (s)</th><th>p90 (s)</th><th>min (s)</th><th>max (s)</th><th>speedup</th><th>output tokens / frame</th><th>decode tokens / s</th><th>pedestrians / frame</th></tr></thead><tbody>`+
+    M.map(m=>{const s=S[m];return `<tr><td><span style="display:inline-flex;gap:6px;align-items:center">${sw(m)}${NAMES[m]}</span></td><td>${fmt(s.latency_mean_s,3)}</td><td>${fmt(s.latency_p50_s,3)}</td><td>${fmt(s.latency_p90_s,3)}</td><td>${fmt(s.latency_min_s,3)}</td><td>${fmt(s.latency_max_s,3)}</td><td>${fmt(base/s.latency_mean_s,2)}×</td><td>${fmt(s.completion_tokens_mean,1)}</td><td>${fmt(s.decode_tok_per_s_mean,1)}</td><td>${fmt(s.pedestrians_mean,2)}</td></tr>`}).join("")+"</tbody>";
+
+  // timeline chart
+  (function(){
+    const box=$("#timeline"),W=720,H=300,ml=36,mr=84,mt=8,mb=44;
+    const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",role:"img","aria-label":"Per-frame latency line chart for three methods"},box);
+    const tmax=T[T.length-1].t,ymax=6.5;
+    const x=t=>ml+(t/tmax)*(W-ml-mr), y=v=>mt+(1-v/ymax)*(H-mt-mb);
+    for(let v=0;v<=6;v+=2){el("line",{x1:ml,x2:W-mr,y1:y(v),y2:y(v),stroke:v?"var(--grid)":"var(--axis)","stroke-width":1},svg);
+      el("text",{x:ml-8,y:y(v)+4,"text-anchor":"end"},svg).textContent=v+"s";}
+    for(let t=0;t<=180;t+=30){el("text",{x:x(t),y:H-mb+16,"text-anchor":"middle"},svg).textContent=t+"s";}
+    el("text",{x:W-mr,y:H-mb+16,"text-anchor":"end"},svg);
+    M.forEach(m=>{el("path",{d:T.map((p,i)=>(i?"L":"M")+x(p.t).toFixed(1)+","+y(p[m]).toFixed(1)).join(""),fill:"none",stroke:COL[m],"stroke-width":2,"stroke-linejoin":"round"},svg);});
+    // direct labels at right end, spread to avoid collision
+    const ends=M.map(m=>({m,v:S[m].latency_mean_s,y:y(T[T.length-1][m])})).sort((a,b)=>a.y-b.y);
+    for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<16)ends[i].y=ends[i-1].y+16;
+    ends.forEach(e=>{el("text",{x:W-mr+8,y:e.y+4,class:"dl"},svg).textContent=NAMES[e.m];});
+    // demo ticks
+    const tickY=H-mb+26;
+    el("text",{x:ml-8,y:tickY+8,"text-anchor":"end"},svg).textContent="demo";
+    DEMO.forEach((d,i)=>{const g=el("g",{style:"cursor:pointer",tabindex:0,role:"button","aria-label":`Open demo frame ${d.frame}`},svg);
+      el("rect",{x:x(d.t)-5,y:tickY-4,width:10,height:20,fill:"transparent"},g);
+      el("rect",{x:x(d.t)-1.5,y:tickY,width:3,height:12,rx:1.5,fill:"var(--ink-2)"},g);
+      g.addEventListener("click",()=>{go(i);$("#demo").scrollIntoView({behavior:"smooth"});});
+      g.addEventListener("keydown",e=>{if(e.key==="Enter"){go(i);$("#demo").scrollIntoView({behavior:"smooth"});}});
+      g.addEventListener("mousemove",e=>showTip(e,`<div class="h">Demo frame ${d.frame}</div><div class="r">t = ${fmt(d.t,1)} s</div><div class="r">${d.tags.join(" · ")||"typical scene"}</div>`));
+      g.addEventListener("mouseleave",hideTip);});
+    // crosshair
+    const cross=el("line",{y1:mt,y2:H-mb,stroke:"var(--axis)","stroke-width":1,visibility:"hidden"},svg);
+    const dots=M.map(m=>el("circle",{r:4,fill:COL[m],stroke:"var(--surface)","stroke-width":2,visibility:"hidden"},svg));
+    const hit=el("rect",{x:ml,y:mt,width:W-ml-mr,height:H-mt-mb,fill:"transparent"},svg);
+    hit.addEventListener("mousemove",e=>{const r=svg.getBoundingClientRect();const px=(e.clientX-r.left)*W/r.width;
+      const t=(px-ml)/(W-ml-mr)*tmax;let best=0;T.forEach((p,i)=>{if(Math.abs(p.t-t)<Math.abs(T[best].t-t))best=i});
+      const p=T[best];cross.setAttribute("x1",x(p.t));cross.setAttribute("x2",x(p.t));cross.setAttribute("visibility","visible");
+      dots.forEach((c,i)=>{c.setAttribute("cx",x(p.t));c.setAttribute("cy",y(p[M[i]]));c.setAttribute("visibility","visible")});
+      showTip(e,`<div class="h">Frame ${p.frame} · t = ${fmt(p.t,1)} s</div>`+M.map(m=>`<div class="r">${sw(m)}${NAMES[m]}<b>${fmt(p[m])} s · ${p[m+"_n"]} peds</b></div>`).join(""));});
+    hit.addEventListener("mouseleave",()=>{hideTip();cross.setAttribute("visibility","hidden");dots.forEach(c=>c.setAttribute("visibility","hidden"))});
+  })();
+
+  // breakdown bars
+  (function(){
+    const box=$("#breakdown"),W=340,rowH=64,H=M.length*rowH+24,ml=4,mr=12;
+    const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",role:"img","aria-label":"Mean latency per method, split into generation and verification"},box);
+    const xmax=5, x=v=>ml+v/xmax*(W-ml-mr);
+    M.forEach((m,i)=>{const s=S[m],y0=i*rowH;
+      el("text",{x:ml,y:y0+14,class:"dl"},svg).textContent=NAMES[m];
+      const gen=s.gen_latency_mean_s,ver=s.latency_mean_s-gen;
+      const segs=[{v:gen,lab:m==="jev"?"box generation":"generation",op:1}];
+      if(ver>0.01)segs.push({v:ver,lab:"Yes/No verification",op:.45});
+      let acc=0;segs.forEach((sg,j)=>{const w=x(acc+sg.v)-x(acc)-(j<segs.length-1?2:0);
+        const r=el("rect",{x:x(acc),y:y0+22,width:Math.max(w,1),height:20,rx:4,fill:COL[m],"fill-opacity":sg.op},svg);
+        r.addEventListener("mousemove",e=>showTip(e,`<div class="h">${NAMES[m]}</div><div class="r">${sg.lab}<b>${fmt(sg.v)} s</b></div>`));
+        r.addEventListener("mouseleave",hideTip);acc+=sg.v;});
+      el("text",{x:Math.min(x(acc)+6,W-mr),y:y0+36,class:"dl","text-anchor":x(acc)+40>W?"end":"start"},svg).textContent=fmt(s.latency_mean_s)+" s";
+      if(segs.length>1)el("text",{x:ml,y:y0+58},svg).textContent=`${fmt(gen)} s boxes + ${fmt(ver)} s parallel Yes/No checks`;
+      else el("text",{x:ml,y:y0+58},svg).textContent=`${fmt(s.completion_tokens_mean,0)} tokens at ${fmt(s.decode_tok_per_s_mean,0)} tok/s`;
+    });
+  })();
+
+  // ---- demo viewer ----
+  let cur=0,method="jev",mode="single";
+  $("#methodSeg").innerHTML=M.map(m=>`<button data-m="${m}" aria-pressed="${m===method}">${sw(m)}${NAMES[m]}</button>`).join("");
+  $("#thumbs").innerHTML=DEMO.map((d,i)=>`<button class="thumb" data-i="${i}" aria-label="Frame ${d.frame}">
+    <img loading="lazy" src="thumbs/jev/frame_${pad(d.frame)}.jpg" alt="">${d.tags.includes("methods disagree")?'<i class="dot" title="methods disagree"></i>':""}<span>${fmt(d.t,0)}s</span></button>`).join("");
+  const imgbox=(m,f,full)=>`<div class="imgbox" data-src="frames/${m}/frame_${pad(f)}.jpg"><img src="frames/${m}/frame_${pad(f)}.jpg" alt="${NAMES[m]} detections on frame ${f}"><div class="cap">${sw(m)}${NAMES[m]}</div></div>`;
+  function render(){
+    const d=DEMO[cur];
+    $("#view").innerHTML=mode==="single"?imgbox(method,d.frame):`<div class="compare">${M.map(m=>imgbox(m,d.frame)).join("")}</div>`;
+    $("#counter").textContent=`${cur+1} / ${DEMO.length}`;
+    document.querySelectorAll("#methodSeg button").forEach(b=>{b.setAttribute("aria-pressed",b.dataset.m===method);b.disabled=mode==="compare";b.style.opacity=mode==="compare"?.5:1});
+    document.querySelectorAll("#modeSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===mode));
+    document.querySelectorAll(".thumb").forEach((t,i)=>{t.setAttribute("aria-current",i===cur);t.querySelector("img").src=`thumbs/${mode==="single"?method:"jev"}/frame_${pad(DEMO[i].frame)}.jpg`});
+    const maxL=Math.max(...M.map(m=>d[m].latency));
+    $("#side").innerHTML=`<h3>Frame ${d.frame}</h3><div class="t">t = ${fmt(d.t,2)} s</div>
+      <div class="tags">${(d.tags.length?d.tags:["typical scene"]).map(t=>`<span class="tag">${t}</span>`).join("")}</div>`+
+      M.map(m=>{const r=d[m];const minS=Math.min(...r.scores);
+        return `<div class="mrow"><span class="nm">${sw(m)}${NAMES[m]}</span><span></span><span class="lat">${fmt(r.latency)} s</span>
+        <div class="bar"><i style="width:${r.latency/6*100}%;background:${COL[m]}"></i></div>
+        <span class="st">${r.n} pedestrians · ${r.tokens} tokens${m==="jev"?` · min P(Yes) ${fmt(minS,3)}`:` · conf ${fmt(minS,2)}–${fmt(Math.max(...r.scores),2)}`}${m!=="baseline"?` · ${fmt(d.baseline.latency/r.latency,1)}× faster`:""}</span></div>`}).join("")+
+      `<a class="full" href="frames/${method}/frame_${pad(d.frame)}.jpg" target="_blank" rel="noopener">Open full-resolution image ↗</a>`;
+    // preload neighbours
+    [cur-1,cur+1].forEach(j=>{if(DEMO[j])M.forEach(m=>{if(mode==="compare"||m===method){new Image().src=`frames/${m}/frame_${pad(DEMO[j].frame)}.jpg`}})});
+  }
+  window.go=i=>{cur=(i+DEMO.length)%DEMO.length;render();};
+  $("#prev").onclick=()=>go(cur-1); $("#next").onclick=()=>go(cur+1);
+  $("#thumbs").onclick=e=>{const t=e.target.closest(".thumb");if(t)go(+t.dataset.i)};
+  $("#methodSeg").onclick=e=>{const b=e.target.closest("button");if(b&&!b.disabled){method=b.dataset.m;render()}};
+  $("#modeSeg").onclick=e=>{const b=e.target.closest("button");if(b){mode=b.dataset.mode;render()}};
+  const lb=$("#lb");
+  $("#view").onclick=e=>{const b=e.target.closest(".imgbox");if(b){lb.querySelector("img").src=b.dataset.src;lb.style.display="flex"}};
+  lb.onclick=()=>lb.style.display="none";
+  addEventListener("keydown",e=>{if(e.target.closest&&e.target.closest("input,textarea"))return;
+    if(e.key==="Escape")lb.style.display="none";
+    else if(e.key==="ArrowRight")go(cur+1);else if(e.key==="ArrowLeft")go(cur-1);
+    else if("123".includes(e.key)&&e.key.length===1){method=M[+e.key-1];mode="single";render()}
+    else if(e.key==="c"||e.key==="C"){mode=mode==="single"?"compare":"single";render()}});
+  render();
+}).catch(err=>{document.querySelector(".wrap").insertAdjacentHTML("beforeend",`<p style="color:var(--muted)">Could not load data.json (${err}). Serve this folder over HTTP, e.g. GitHub Pages or <code>python -m http.server</code>.</p>`)});
+</script>
+</body>
+</html>

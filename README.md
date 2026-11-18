@@ -67,6 +67,13 @@ STRIDE=15 CONC=1 scripts/run_all.sh     # STRIDE=15 -> 1 fps; CONC=1 -> true sin
 Outputs: `results/vis/<method>/frame_XXXXXX.jpg` (full-res annotated images, one per processed frame),
 `results/<method>/annotated.mp4`, `results/<method>/detections.jsonl`, `results/comparison.md`.
 
+## Demo page
+
+**https://snowluo-glydways.github.io/TMS-VLM/** (GitHub Pages, served from `docs/`): 20 representative frames
+with all three methods side by side, per-frame latency for all 194 frames, and the latency breakdown.
+Rebuild with `.venv/bin/python scripts/make_demo.py` (picks the frames deterministically, copies them to
+`docs/frames/<method>/`, writes `docs/data.json`).
+
 ## Public V2X dataset test
 
 See [v2x_pubilc_test/README.md](v2x_pubilc_test/README.md): the same three methods on 200 images of the
