@@ -1,5 +1,9 @@
 # TMS-VLM — pedestrian 2D detection with Qwen3.8-27B
 
+> **Live demo: https://snowluo-glydways.github.io/TMS-VLM/**
+> 20 representative frames (baseline / MTP / JEV side by side) + latency charts for all 194 frames.
+> Demo frames in the repo: [`docs/frames/baseline/`](docs/frames/baseline/), [`docs/frames/mtp/`](docs/frames/mtp/), [`docs/frames/jev/`](docs/frames/jev/) (full-res 3840x2160) and `docs/thumbs/<method>/` (640x360).
+
 Pedestrian bounding-box detection on the TMS roadside camera log
 `20261110_ATL175_DEV_MSF1_AP1_UPE_003_tms1000_calib`
 (catalog artifact `a35726a9-c637-4ab2-bd09-366ba9e1c7fe`, 3840x2160, 15 fps, 193 s, 2902 frames),
