@@ -2,7 +2,8 @@
 
 > **Live demo: https://snowluo-glydways.github.io/TMS-VLM/**
 > 20 representative frames (baseline / MTP / JEV side by side) + latency charts for all 194 frames.
-> Demo frames in the repo: [`docs/frames/baseline/`](docs/frames/baseline/), [`docs/frames/mtp/`](docs/frames/mtp/), [`docs/frames/jev/`](docs/frames/jev/) (full-res 3840x2160) and `docs/thumbs/<method>/` (640x360).
+> **V2X public-dataset demo: https://snowluo-glydways.github.io/TMS-VLM/v2x/** (2x-upscaled runs, 200 images, accuracy vs ground truth + latency).
+> Demo frames in the repo: [`docs/frames/baseline/`](docs/frames/baseline/), [`docs/frames/mtp/`](docs/frames/mtp/), [`docs/frames/jev/`](docs/frames/jev/) (full-res 3840x2160) and `docs/thumbs/<method>/` (640x360); V2X annotated images: `docs/v2x/vis/<baseline|mtp|jev>_up2x/` (all 200 per run, 1664x1664).
 
 Pedestrian bounding-box detection on the TMS roadside camera log
 `20261110_ATL175_DEV_MSF1_AP1_UPE_003_tms1000_calib`

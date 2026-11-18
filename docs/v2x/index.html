@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2X Public Test Demo</title>
+<meta name="description" content="Qwen3.8-27B pedestrian detection on 200 Constellation roadside images (2x upscaled): baseline vs MTP vs JEV accuracy and latency.">
+<style>
+:root{
+  --page:#f9f9f7; --surface:#fcfcfb; --raised:#ffffff;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#6f6d68;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --chip:#efeee9; --accent:#2a78d6; --warn:#fab219;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0d; --surface:#1a1a19; --raised:#222220;
+    --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --chip:#2a2a28; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0d; --surface:#1a1a19; --raised:#222220;
+  --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --chip:#2a2a28; --accent:#3987e5;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 16px 64px}
+.crumb{font-size:13px;margin-bottom:12px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:18px;margin:0 0 4px}
+.sub{color:var(--ink-2);margin:0;max-width:860px}
+.meta{color:var(--muted);font-size:13px;margin-top:8px}
+section{margin-top:40px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+.kpi .lab{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px}
+.kpi .row{display:flex;gap:24px;margin-top:4px}
+.kpi .val{font-size:30px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .val small{font-size:14px;font-weight:500;color:var(--ink-2);margin-left:2px}
+.kpi .k{font-size:12px;color:var(--muted)}
+.kpi .note{color:var(--muted);font-size:13px;margin-top:6px;font-variant-numeric:tabular-nums}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sec-head p{margin:0;color:var(--ink-2);font-size:14px;max-width:760px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chart-title{font-size:14px;font-weight:600;margin:0}
+.chart-sub{font-size:13px;color:var(--muted);margin:0 0 8px}
+svg text{fill:var(--muted);font-size:11px;font-family:inherit}
+svg .dl{fill:var(--ink-2);font-size:12px;font-weight:500}
+.tip{position:fixed;pointer-events:none;background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);display:none;z-index:20;min-width:150px;font-variant-numeric:tabular-nums}
+.tip .h{font-weight:600;color:var(--ink);margin-bottom:4px}
+.tip .r{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+.tip .r b{margin-left:auto;color:var(--ink);font-weight:600;padding-left:12px}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--grid);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:500}
+td.best{font-weight:700}
+.tbl-wrap{overflow-x:auto;margin-top:12px}
+.callout{margin-top:12px;font-size:13px;color:var(--ink-2);line-height:1.6}
+.callout b{color:var(--ink)}
+/* viewer */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.seg{display:inline-flex;background:var(--chip);border-radius:8px;padding:3px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13px;padding:6px 12px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.seg button .c{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav{border:1px solid var(--border);background:var(--raised);color:var(--ink);border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:16px}
+select{font:inherit;font-size:13px;color:var(--ink);background:var(--raised);border:1px solid var(--border);border-radius:8px;padding:6px 8px}
+.counter{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;min-width:64px;text-align:center}
+.hint{margin-left:auto;color:var(--muted);font-size:12px}
+.stage{display:grid;grid-template-columns:minmax(0,640px) 1fr;gap:12px;align-items:start}
+.stage.cmp{grid-template-columns:1fr}
+.imgbox{background:#000;border-radius:10px;overflow:hidden;position:relative;aspect-ratio:1/1;cursor:zoom-in}
+.imgbox img{width:100%;height:100%;object-fit:contain;display:block}
+.imgbox .cap{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;display:flex;align-items:center;gap:6px}
+.compare{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.side h3{font-size:15px;margin:0;word-break:break-all}
+.side .t{color:var(--muted);font-size:13px;margin:2px 0 10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tag{background:var(--chip);color:var(--ink-2);font-size:12px;padding:2px 8px;border-radius:999px}
+.mtable td,.mtable th{padding:6px 6px}
+.mtable td:first-child{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)}
+.full{font-size:12px;display:inline-block;margin-top:10px}
+.gridhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:20px}
+.gridhead p{margin:0;color:var(--muted);font-size:13px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px;margin-top:8px}
+.thumb{position:relative;padding:0;border:2px solid transparent;border-radius:7px;overflow:hidden;cursor:pointer;background:#000;aspect-ratio:1/1}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:.85}
+.thumb[aria-current="true"]{border-color:var(--accent)}
+.thumb[aria-current="true"] img,.thumb:hover img{opacity:1}
+.thumb span{position:absolute;right:3px;bottom:2px;font-size:10px;color:#fff;background:rgba(0,0,0,.65);padding:0 4px;border-radius:4px;font-variant-numeric:tabular-nums}
+.foot{color:var(--muted);font-size:13px;margin-top:40px;line-height:1.6}
+.foot code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;z-index:30;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+.lightbox img{max-width:100%;max-height:100%}
+@media (max-width:900px){
+  .charts,.stage,.kpis{grid-template-columns:1fr}
+  .compare{grid-template-columns:1fr}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb"><a href="../">← TMS roadside camera demo</a></div>
+  <header>
+    <h1>V2X public test: pedestrian detection on 200 roadside images (2× upscaled)</h1>
+    <p class="sub">The same three Qwen3.8-27B methods as the TMS demo, run on the public <b>Constellation</b> dataset (high-elevation intersection cameras, NYC). Each 832×832 image is enlarged 2× before it is sent to the model. Thin cyan boxes in the images are the ground truth.</p>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <div class="sec-head">
+      <div>
+        <h2>Accuracy and latency</h2>
+        <p>A prediction counts as a hit when its center falls inside a ground-truth box (“center”). This avoids penalizing a box-drawing difference: the dataset draws pedestrians as roughly square boxes about twice as wide as the person, while the model draws tight body boxes.</p>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="charts">
+      <div class="card">
+        <p class="chart-title">Accuracy</p>
+        <p class="chart-sub">higher is better, 942 ground-truth pedestrians</p>
+        <div id="acc"></div>
+      </div>
+      <div class="card">
+        <p class="chart-title">Latency per image, sorted</p>
+        <p class="chart-sub">seconds; the right end is the slowest images</p>
+        <div id="lat"></div>
+      </div>
+    </div>
+    <div class="card tbl-wrap"><table id="tbl"></table></div>
+    <div class="callout" id="callout"></div>
+  </section>
+
+  <section id="viewer">
+    <div class="sec-head">
+      <div>
+        <h2>All 200 images</h2>
+        <p>Pick a filter to jump to the interesting cases. Every image is shown for all three methods.</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="View" id="modeSeg">
+        <button data-mode="single" aria-pressed="true">Single</button>
+        <button data-mode="compare" aria-pressed="false">Side by side</button>
+      </div>
+      <div class="seg" role="group" aria-label="Method" id="methodSeg"></div>
+      <button class="nav" id="prev" aria-label="Previous image">‹</button>
+      <span class="counter" id="counter"></span>
+      <button class="nav" id="next" aria-label="Next image">›</button>
+      <span class="hint">← → images · 1 2 3 methods · C compare</span>
+    </div>
+    <div class="stage" id="stage">
+      <div id="view"></div>
+      <aside class="card side" id="side"></aside>
+    </div>
+    <div class="gridhead">
+      <div class="seg" role="group" aria-label="Filter" id="filterSeg"></div>
+      <label style="font-size:13px;color:var(--ink-2)">Sort
+        <select id="sort">
+          <option value="name">image name</option>
+          <option value="gt">most pedestrians</option>
+          <option value="miss">most missed (JEV)</option>
+          <option value="lat">slowest (JEV)</option>
+        </select></label>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+  </section>
+
+  <div class="foot">
+    <b>Dataset.</b> Constellation (COSMOS smart-intersection testbed), <a href="https://huggingface.co/datasets/mehmetkeremturkcan/constellation_urban_intersection_dataset" rel="noopener">Hugging Face</a> · <a href="https://arxiv.org/abs/2404.16944" rel="noopener">arXiv 2404.16944</a>. Licensed CC BY-NC-SA 3.0 (non-commercial research). Images shown here are annotated derivatives under the same license. Original camera view, validation split, 200 images picked with a fixed seed; only the pedestrian class is evaluated.<br>
+    <b>Setup.</b> 4× A100-80GB, vLLM tensor parallel 4, one image in flight (true per-image latency). Box colors in the images: green P ≥ 0.80, yellow 0.60–0.80, orange &lt; 0.60. Annotated images are in <code>docs/v2x/vis/&lt;run&gt;/</code>; full tables in <code>v2x_pubilc_test/results/comparison.md</code>.
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+<div class="lightbox" id="lb"><img alt=""></div>
+
+<script>
+const NAMES={baseline_up2x:"Baseline",mtp_up2x:"MTP",jev_up2x:"JEV + MTP"};
+const COL={baseline_up2x:"var(--s1)",mtp_up2x:"var(--s2)",jev_up2x:"var(--s3)"};
+const $=s=>document.querySelector(s);
+const fmt=(x,d=2)=>Number(x).toFixed(d);
+const tip=$("#tip");
+function showTip(e,html){tip.innerHTML=html;tip.style.display="block";
+  const w=tip.offsetWidth,h=tip.offsetHeight;let x=e.clientX+14,y=e.clientY+14;
+  if(x+w>innerWidth-8)x=e.clientX-w-14; if(y+h>innerHeight-8)y=e.clientY-h-14;
+  tip.style.left=x+"px";tip.style.top=y+"px";}
+const hideTip=()=>tip.style.display="none";
+const sw=m=>`<i class="sw" style="background:${COL[m]}"></i>`;
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent&&parent.appendChild(e);return e;}
+
+fetch("data.json").then(r=>r.json()).then(D=>{
+  const R=D.runs,M=D.metrics,I=D.images,J="jev_up2x";
+  const base=M.baseline_up2x.latency_mean_s;
+  $("#meta").textContent=`${M[J].images} images · ${M[J].gt_peds} ground-truth pedestrians (median box ~35×32 px in the original image) · ${I.filter(x=>x.gt===0).length} images with no pedestrians`;
+
+  $("#kpis").innerHTML=R.map(m=>{const s=M[m];
+    return `<div class="card kpi"><div class="lab">${sw(m)}${NAMES[m]}</div>
+    <div class="row"><div><div class="val">${fmt(s.latency_mean_s)}<small>s</small></div><div class="k">mean latency</div></div>
+    <div><div class="val">${fmt(s["F1@center"])}</div><div class="k">F1 (center hit)</div></div></div>
+    <div class="note">${m==="baseline_up2x"?"reference":`${fmt(base/s.latency_mean_s,1)}× faster than baseline`} · p90 ${fmt(s.latency_p90_s)} s · ${fmt(s.output_tokens_mean,0)} tokens</div></div>`}).join("");
+  $("#legend").innerHTML=R.map(m=>`<span>${sw(m)}${NAMES[m]}</span>`).join("");
+
+  // table
+  const cols=[["P@center","precision",1],["R@center","recall",1],["F1@center","F1",1],["AP@center","AP (center)",1],["AP@IoU0.3","AP@IoU 0.3",1],["AP@IoU0.5","AP@IoU 0.5",1],["F1@center,score>=0.5","F1, score ≥ 0.5",1],["count_MAE","count error / img",-1],["imgs_with_>30_preds","images with >30 boxes",-1],["latency_mean_s","latency mean (s)",-1],["latency_p50_s","p50 (s)",-1],["latency_p90_s","p90 (s)",-1],["output_tokens_mean","output tokens",-1]];
+  const best=Object.fromEntries(cols.map(([k,,dir])=>[k,(dir>0?Math.max:Math.min)(...R.map(m=>M[m][k]))]));
+  $("#tbl").innerHTML=`<thead><tr><th>method</th>${cols.map(c=>`<th>${c[1]}</th>`).join("")}</tr></thead><tbody>`+
+    R.map(m=>`<tr><td><span style="display:inline-flex;gap:6px;align-items:center">${sw(m)}${NAMES[m]}</span></td>${cols.map(([k])=>{const v=M[m][k];return `<td class="${v===best[k]?"best":""}">${Number.isInteger(v)?v:fmt(v,k.startsWith("lat")?3:k.includes("tokens")?1:3)}</td>`}).join("")}</tr>`).join("")+"</tbody>";
+  $("#callout").innerHTML=`<b>Reading the numbers.</b> Baseline and MTP give the same accuracy (MTP only changes how fast tokens are decoded), and MTP is ${fmt(base/M.mtp_up2x.latency_mean_s,1)}× faster. JEV is the fastest (${fmt(M[J].latency_mean_s)} s mean, ${fmt(M[J].output_tokens_mean,0)} tokens) and its P(Yes) score ranks boxes best (highest AP), but it outputs more boxes, so precision is lower until boxes with P(Yes) &lt; 0.5 are dropped (F1 ${fmt(M[J]["F1@center"])} → ${fmt(M[J]["F1@center,score>=0.5"])}). On ${M[J]["imgs_with_>30_preds"]} images JEV falls into a repetition loop and lists ~100 boxes; those are the slow tail in the latency chart. Each method misses about 35–39% of the pedestrians, mostly tiny (~30 px) people. Bold = best in column. IoU 0.5 numbers are low for every method because of the box-drawing difference described above.`;
+
+  // accuracy grouped bars
+  (function(){
+    const mets=[["P@center","Precision"],["R@center","Recall"],["F1@center","F1"],["AP@center","AP (center)"],["F1@center,score>=0.5","F1, P ≥ 0.5"]];
+    const W=520,ml=92,mr=40,bh=10,gap=2,grp=R.length*(bh+gap)+14,H=mets.length*grp+24;
+    const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",role:"img","aria-label":"Accuracy metrics per method"},$("#acc"));
+    const x=v=>ml+v*(W-ml-mr);
+    [0,.25,.5,.75,1].forEach(v=>{el("line",{x1:x(v),x2:x(v),y1:0,y2:H-20,stroke:v?"var(--grid)":"var(--axis)"},svg);el("text",{x:x(v),y:H-6,"text-anchor":"middle"},svg).textContent=v});
+    mets.forEach(([k,lab],gi)=>{const y0=gi*grp+4;
+      el("text",{x:ml-8,y:y0+grp/2-4,"text-anchor":"end",class:"dl"},svg).textContent=lab;
+      R.forEach((m,i)=>{const v=M[m][k],y=y0+i*(bh+gap);
+        const r=el("rect",{x:x(0),y,width:Math.max(x(v)-x(0),1),height:bh,rx:3,fill:COL[m]},svg);
+        el("rect",{x:x(0),y:y-1,width:W-ml-mr,height:bh+2,fill:"transparent"},svg).addEventListener("mousemove",e=>showTip(e,`<div class="h">${lab}</div>`+R.map(n=>`<div class="r">${sw(n)}${NAMES[n]}<b>${fmt(M[n][k],3)}</b></div>`).join("")));
+        svg.lastChild.addEventListener("mouseleave",hideTip);
+        el("text",{x:x(v)+4,y:y+bh-1,"font-size":10},svg).textContent=fmt(v);
+      });});
+  })();
+
+  // sorted latency curves
+  (function(){
+    const W=520,H=300,ml=36,mr=72,mt=8,mb=30;
+    const svg=el("svg",{viewBox:`0 0 ${W} ${H}`,width:"100%",role:"img","aria-label":"Sorted per-image latency for each method"},$("#lat"));
+    const S=Object.fromEntries(R.map(m=>[m,I.map(r=>r[m].lat).sort((a,b)=>a-b)]));
+    const ymax=Math.ceil(Math.max(...R.map(m=>S[m][S[m].length-1]))/2)*2,n=I.length;
+    const x=i=>ml+i/(n-1)*(W-ml-mr), y=v=>mt+(1-v/ymax)*(H-mt-mb);
+    for(let v=0;v<=ymax;v+=ymax>8?4:2){el("line",{x1:ml,x2:W-mr,y1:y(v),y2:y(v),stroke:v?"var(--grid)":"var(--axis)"},svg);el("text",{x:ml-6,y:y(v)+4,"text-anchor":"end"},svg).textContent=v+"s";}
+    [0,25,50,75,100].forEach(p=>{el("text",{x:x(p/100*(n-1)),y:H-10,"text-anchor":"middle"},svg).textContent=p+"%"});
+    R.forEach(m=>el("path",{d:S[m].map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1)).join(""),fill:"none",stroke:COL[m],"stroke-width":2,"stroke-linejoin":"round"},svg));
+    const ends=R.map(m=>({m,y:y(S[m][Math.round(n*0.9)])})).sort((a,b)=>a.y-b.y);
+    for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<15)ends[i].y=ends[i-1].y+15;
+    ends.forEach(e=>{el("text",{x:W-mr+6,y:e.y+4,class:"dl"},svg).textContent=NAMES[e.m]});
+    const cross=el("line",{y1:mt,y2:H-mb,stroke:"var(--axis)",visibility:"hidden"},svg);
+    const dots=R.map(m=>el("circle",{r:4,fill:COL[m],stroke:"var(--surface)","stroke-width":2,visibility:"hidden"},svg));
+    const hit=el("rect",{x:ml,y:mt,width:W-ml-mr,height:H-mt-mb,fill:"transparent"},svg);
+    hit.addEventListener("mousemove",e=>{const b=svg.getBoundingClientRect();const px=(e.clientX-b.left)*W/b.width;
+      const i=Math.max(0,Math.min(n-1,Math.round((px-ml)/(W-ml-mr)*(n-1))));
+      cross.setAttribute("x1",x(i));cross.setAttribute("x2",x(i));cross.setAttribute("visibility","visible");
+      dots.forEach((c,j)=>{c.setAttribute("cx",x(i));c.setAttribute("cy",y(S[R[j]][i]));c.setAttribute("visibility","visible")});
+      showTip(e,`<div class="h">${fmt(i/(n-1)*100,0)}% of images are faster than</div>`+R.map(m=>`<div class="r">${sw(m)}${NAMES[m]}<b>${fmt(S[m][i])} s</b></div>`).join(""));});
+    hit.addEventListener("mouseleave",()=>{hideTip();cross.setAttribute("visibility","hidden");dots.forEach(c=>c.setAttribute("visibility","hidden"))});
+  })();
+
+  // ---- viewer ----
+  I.forEach(r=>{r.miss=r.gt-r[J].tp_c;r.disagree=Math.max(...R.map(m=>r[m].n))-Math.min(...R.map(m=>r[m].n))>=3;});
+  const FILTERS=[["all","All",r=>true],["crowded","Crowded (≥ 8 people)",r=>r.gt>=8],["empty","No pedestrians",r=>r.gt===0],["loop","JEV repetition loop",r=>r[J].n>30],["missed","≥ 3 missed (JEV)",r=>r.miss>=3],["disagree","Methods disagree",r=>r.disagree]];
+  const SORTS={name:(a,b)=>a.image.localeCompare(b.image),gt:(a,b)=>b.gt-a.gt,miss:(a,b)=>b.miss-a.miss,lat:(a,b)=>b[J].lat-a[J].lat};
+  let filter="all",sort="name",list=[],cur=0,method=J,mode="single";
+  $("#filterSeg").innerHTML=FILTERS.map(([k,lab,f])=>`<button data-f="${k}" aria-pressed="${k===filter}">${lab} <span class="c">${I.filter(f).length}</span></button>`).join("");
+  $("#methodSeg").innerHTML=R.map(m=>`<button data-m="${m}" aria-pressed="${m===method}">${sw(m)}${NAMES[m]}</button>`).join("");
+  function rebuild(keep){const name=keep&&list[cur]?list[cur].image:null;
+    list=I.filter(FILTERS.find(f=>f[0]===filter)[2]).slice().sort(SORTS[sort]);
+    cur=Math.max(0,name?list.findIndex(r=>r.image===name):0);if(cur<0)cur=0;
+    $("#thumbs").innerHTML=list.map((r,i)=>`<button class="thumb" data-i="${i}" aria-label="${r.image}"><img loading="lazy" src="thumbs/${mode==="single"?method:J}/${r.image}" alt=""><span>GT ${r.gt}</span></button>`).join("");
+    document.querySelectorAll("#filterSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===filter));
+    render();}
+  const box=(m,f)=>`<div class="imgbox" data-src="vis/${m}/${f}"><img src="vis/${m}/${f}" alt="${NAMES[m]} detections on ${f}"><div class="cap">${sw(m)}${NAMES[m]}</div></div>`;
+  function render(){
+    const r=list[cur];if(!r){$("#view").innerHTML="";$("#side").innerHTML="No images match this filter.";return;}
+    $("#stage").classList.toggle("cmp",mode==="compare");
+    $("#view").innerHTML=mode==="single"?box(method,r.image):`<div class="compare">${R.map(m=>box(m,r.image)).join("")}</div>`;
+    $("#counter").textContent=`${cur+1} / ${list.length}`;
+    document.querySelectorAll("#methodSeg button").forEach(b=>{b.setAttribute("aria-pressed",b.dataset.m===method);b.disabled=mode==="compare";b.style.opacity=mode==="compare"?.5:1});
+    document.querySelectorAll("#modeSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===mode));
+    document.querySelectorAll(".thumb").forEach((t,i)=>t.setAttribute("aria-current",i===cur));
+    const tags=FILTERS.slice(1).filter(f=>f[2](r)).map(f=>f[1]);
+    $("#side").innerHTML=`<h3>${r.image}</h3><div class="t">${r.gt} ground-truth pedestrian${r.gt===1?"":"s"}</div>
+      <div class="tags">${(tags.length?tags:["typical"]).map(t=>`<span class="tag">${t}</span>`).join("")}</div>
+      <table class="mtable"><thead><tr><th>method</th><th>boxes</th><th>hits</th><th>missed</th><th>false</th><th>latency</th><th>tokens</th></tr></thead><tbody>`+
+      R.map(m=>{const s=r[m];return `<tr><td>${sw(m)}${NAMES[m]}</td><td>${s.n}</td><td>${s.tp_c}</td><td>${r.gt-s.tp_c}</td><td>${s.n-s.tp_c}</td><td>${fmt(s.lat)} s</td><td>${s.tok}</td></tr>`}).join("")+
+      `</tbody></table><div class="t" style="margin-top:8px">hits / missed / false use the center-hit rule. JEV latency = ${fmt(r[J].gen)} s boxes + ${fmt(r[J].lat-r[J].gen)} s Yes/No checks.</div>
+      <a class="full" href="vis/${mode==="single"?method:J}/${r.image}" target="_blank" rel="noopener">Open full-size image (1664 px) ↗</a>`;
+    [cur-1,cur+1].forEach(j=>{if(list[j])R.forEach(m=>{if(mode==="compare"||m===method)new Image().src=`vis/${m}/${list[j].image}`})});
+  }
+  const go=i=>{if(!list.length)return;cur=(i+list.length)%list.length;render();const t=document.querySelector(`.thumb[data-i="${cur}"]`);t&&t.scrollIntoView({block:"nearest"});};
+  $("#prev").onclick=()=>go(cur-1);$("#next").onclick=()=>go(cur+1);
+  $("#thumbs").onclick=e=>{const t=e.target.closest(".thumb");if(t){go(+t.dataset.i);$("#viewer").scrollIntoView({behavior:"smooth"})}};
+  $("#filterSeg").onclick=e=>{const b=e.target.closest("button");if(b){filter=b.dataset.f;rebuild(false)}};
+  $("#sort").onchange=e=>{sort=e.target.value;rebuild(true)};
+  $("#methodSeg").onclick=e=>{const b=e.target.closest("button");if(b&&!b.disabled){method=b.dataset.m;rebuild(true)}};
+  $("#modeSeg").onclick=e=>{const b=e.target.closest("button");if(b){mode=b.dataset.mode;rebuild(true)}};
+  const lb=$("#lb");
+  $("#view").onclick=e=>{const b=e.target.closest(".imgbox");if(b){lb.querySelector("img").src=b.dataset.src;lb.style.display="flex"}};
+  lb.onclick=()=>lb.style.display="none";
+  addEventListener("keydown",e=>{if(e.target.tagName==="SELECT")return;
+    if(e.key==="Escape")lb.style.display="none";
+    else if(e.key==="ArrowRight")go(cur+1);else if(e.key==="ArrowLeft")go(cur-1);
+    else if(["1","2","3"].includes(e.key)){method=R[+e.key-1];mode="single";rebuild(true)}
+    else if(e.key==="c"||e.key==="C"){mode=mode==="single"?"compare":"single";rebuild(true)}});
+  rebuild(false);
+}).catch(err=>{document.querySelector(".wrap").insertAdjacentHTML("beforeend",`<p style="color:var(--muted)">Could not load data.json (${err}). Serve this folder over HTTP, e.g. GitHub Pages or <code>python -m http.server</code>.</p>`)});
+</script>
+</body>
+</html>

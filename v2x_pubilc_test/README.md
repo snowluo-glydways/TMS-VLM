@@ -4,6 +4,9 @@ The same three methods as the TMS pipeline (`../tms_vlm/detect.py`: **baseline**
 identical prompts, requests and parsing) are evaluated for detection accuracy, 2D-box accuracy and latency on a
 public roadside (infrastructure-side) camera dataset.
 
+**Demo page:** https://snowluo-glydways.github.io/TMS-VLM/v2x/ (the `*_up2x` runs; annotated images in
+`../docs/v2x/vis/<run>/`, rebuilt with `../.venv/bin/python make_demo.py`).
+
 ## Dataset
 
 **Constellation** — high-elevation roadside cameras at the COSMOS smart-intersection testbed (NYC).
